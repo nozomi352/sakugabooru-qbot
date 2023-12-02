@@ -50,9 +50,7 @@ async def handle_message(websocket: WebSocket):
                 messages_in.clear()
                 for message in messages:
                     msg = InputMessageWrapper(message)
-                    res = await msg.process()
-                    if res:
-                        messages_out.append(res)
+                    asyncio.create_task(msg.process(messages_out))
                 await asyncio.sleep(1e-5)
         except WebSocketDisconnect:
             ev.set()

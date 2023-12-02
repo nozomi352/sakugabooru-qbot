@@ -29,19 +29,17 @@ class InputMessageWrapper:
             }
         }
 
-    async def process (self):
+    async def process (self, message_out: List):
         if self.message.startswith('.echo '):
-            return self.handle_echo()
+            message_out.append(self.handle_echo())
         elif self.message.startswith(f'[CQ:at,qq={self.my_qq}]'):
-            return self.handle_greetings()
+            message_out.append(self.handle_greetings())
         elif self.message.startswith('.post '):
-            return await self.handle_sakuga_booru_post()
+            message_out.append(await self.handle_sakuga_booru_post())
         elif self.message.startswith('.xiongwen '):
-            return await self.handle_text_generator()
+            message_out.append(await self.handle_text_generator())
         elif self.message.startswith('.help'):
-            return await self.hendle_help()
-        else:
-            return None
+            message_out.append(await self.hendle_help())
 
     def handle_echo (self):
         rep = self.message.split('.echo ')[1]
@@ -55,7 +53,9 @@ class InputMessageWrapper:
         print('sakugabot.pw', post_id)
         async with aiohttp.ClientSession() as session:
             async with session.get(f'https://sakugabot.pw/api/posts/{post_id}/?format=json') as r:
-                if r.status != 200:
+                if r.status == 404:
+                    return self.reply_message(f'sakugabot.pw上没有这个ID, ID: {post_id}')
+                elif r.status != 200:
                     return self.reply_message(f'无法调用sakugabot.pw API, ID: {post_id}')
                 j = await r.json()
         tags: List[Dict] = j['tags']
@@ -70,10 +70,12 @@ class InputMessageWrapper:
                 data={'url': weibo_img_url, 'headers':'Referer=https://weibo.com/'}
             ) as r:
                 if r.status != 200:
-                    return self.reply_message(f'无法获取wb图片, ID: {post_id}')
+                    return self.reply_message(f'无法获取wb图片({r.status}), ID: {post_id}')
                 j = await r.json()
+        print('file url:', j)
+        if not 'data' in j or not 'file' in j['data']:
+            return self.reply_message(f'无法保存wb图片')
         weibo_img_url = j['data']['file']
-        print('file url:', weibo_img_url)
         return self.reply_message(f'{post_id}\n[CQ:image,file=file:///{weibo_img_url}] {display_tags}')
     
     async def handle_text_generator (self):
