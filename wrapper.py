@@ -70,4 +70,4 @@ class InputMessageWrapper:
                 j = await r.json()
         weibo_img_url = j['data']['file']
         print('file url:', weibo_img_url)
-        return self.reply_message(f'[CQ:image,file=file:///{weibo_img_url}] {post_id}\n {display_tags}')
+        return self.reply_message(f'{post_id}\n[CQ:image,file=file:///{weibo_img_url}] {display_tags}')

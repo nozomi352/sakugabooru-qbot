@@ -22,34 +22,40 @@ async def handle_message(websocket: WebSocket):
     running = threading.Event()
 
     async def recv_message(ev: threading.Event):
-        while not ev.is_set():
-            data = await websocket.receive_json()
-            if data.get('post_type', '') != 'message':
-                continue
-            messages_in.append(data)
-            await asyncio.sleep(1e-5)
-        ev.set()
+        try:
+            while not ev.is_set():
+                data = await websocket.receive_json()
+                if data.get('post_type', '') != 'message':
+                    continue
+                messages_in.append(data)
+                await asyncio.sleep(1e-5)
+        except WebSocketDisconnect:
+            ev.set()
 
     async def send_message(ev: threading.Event):
-        while not ev.is_set():
-            messages = messages_out.copy()
-            messages_out.clear()
-            for message in messages:
-                await websocket.send_json(message)
-            await asyncio.sleep(1e-5)
-        ev.set()
+        try:
+            while not ev.is_set():
+                messages = messages_out.copy()
+                messages_out.clear()
+                for message in messages:
+                    await websocket.send_json(message)
+                await asyncio.sleep(1e-5)
+        except WebSocketDisconnect:
+            ev.set()
     
     async def process_message(ev: threading.Event):
-        while not ev.is_set():
-            messages = messages_in.copy()
-            messages_in.clear()
-            for message in messages:
-                msg = InputMessageWrapper(message)
-                res = await msg.process()
-                if res:
-                    messages_out.append(res)
-            await asyncio.sleep(1e-5)
-        ev.set()
+        try:
+            while not ev.is_set():
+                messages = messages_in.copy()
+                messages_in.clear()
+                for message in messages:
+                    msg = InputMessageWrapper(message)
+                    res = await msg.process()
+                    if res:
+                        messages_out.append(res)
+                await asyncio.sleep(1e-5)
+        except WebSocketDisconnect:
+            ev.set()
 
     await asyncio.gather(recv_message(running), send_message(running), process_message(running))
 
